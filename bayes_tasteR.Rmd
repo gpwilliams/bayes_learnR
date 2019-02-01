@@ -19,7 +19,6 @@ knitr::opts_chunk$set(fig.width = 6, fig.height = 6, fig.align = "center")
 
 ```{r libraries, include = FALSE, messages = FALSE}
 library(tidyverse)
-library(here)
 library(patchwork)
 library(brms)
 library(kableExtra)
@@ -247,8 +246,8 @@ prediction <- "groupintervention = 0"
 
 small_zero_h <- hypothesis(small_zero, prediction)
 wide_zero_h <- hypothesis(wide_zero, prediction)
-small_direction <- hypothesis(small_direction, prediction)
-wide_direction <- hypothesis(wide_direction, prediction)
+small_direction_h <- hypothesis(small_direction, prediction)
+wide_direction_h <- hypothesis(wide_direction, prediction)
 
 add_lines <- function(ggplot_object) {
     ggplot_object + 
@@ -257,8 +256,8 @@ add_lines <- function(ggplot_object) {
         0,
         small_zero_h$hypothesis$Estimate,
         wide_zero_h$hypothesis$Estimate,
-        small_direction$hypothesis$Estimate,
-        wide_direction$hypothesis$Estimate
+        small_direction_h$hypothesis$Estimate,
+        wide_direction_h$hypothesis$Estimate
       ), 
       col = c("#525252", "#a6611a", "#dfc27d", "#80cdc1", "#018571"),
       lwd = 1
@@ -299,12 +298,12 @@ wide_zero_plot <- plot(wide_zero_h)[[1]] %>%
   add_lines() +
   theme(legend.position = c(.85, .9))
   
-small_direction_plot <- plot(small_direction)[[1]] %>%
+small_direction_plot <- plot(small_direction_h)[[1]] %>%
   add_lines() + 
   guides(fill = FALSE) +
   labs(x = "Parameter Estimate", y = "Density")
 
-wide_direction_plot <- plot(wide_direction)[[1]] %>%
+wide_direction_plot <- plot(wide_direction_h)[[1]] %>%
   add_lines() + 
   guides(fill = FALSE) +
   labs(x = "Parameter Estimate")
@@ -317,7 +316,6 @@ small_zero_plot +
   wide_direction_plot +
   plot_layout(ncol = 2) 
 ```
-
 
 The wider the prior, the less impact it has on the posterior regardless of its position. More specific priors have a larger impact on the posterior.
 
@@ -436,8 +434,8 @@ I'm not going to pretend I know anything about this. But, they now have a Bayesi
 ]
 
 .pull-right[
-```{r clicky-img, echo = FALSE, out.width = "300px"}
-knitr::include_graphics(here("img", "jasp.png"))
-knitr::include_graphics(here("img", "fire.gif"))
+```{r clicky-options, echo = FALSE, out.width = "300px"}
+knitr::include_graphics("img/jasp.png")
+knitr::include_graphics("img/fire.gif")
 ```
 ]
