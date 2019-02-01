@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Taster on Bayesian Inference</title>
+    <meta charset="utf-8">
+    <meta name="author" content="Glenn Williams" />
+    <meta name="date" content="2019-02-01" />
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Taster on Bayesian Inference
+### Glenn Williams
+### 2019-02-01
+
+---
+
+
+
+
+
+
+# Bayes Rule (Does it?)
+
+General approach is to use **prior information** with your observed data to determine the most plausibile parameter estimates conditional on your model. Probability is interpreted as a **degree of belief**.
+
+
+
+&lt;img src="bayes_tasteR_files/figure-html/prior-posterior-likelihood-data-plot-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Frequentist vs. Bayesian Statistics
+
+Some differences between Frequentist (left) and **Bayesian** statistics (right):
+
+.pull-left[
+1. Finds the best model (amongst many others) to fit your data.
+
+1. 95%&lt;sup&gt;1&lt;/sup&gt; **confidence interval**: Using this method to calculate CI, 95% of CIs will contain the true parameter value in the long run.
+
+1. Naive models: Assumes flat priors where all values are equally likely. (Including crazy-large effects; i.e. not those in most psychological research.)
+]
+
+.pull-right[
+1. Gives a distribution of models that are (more or less) likely given the data.
+
+1. 95% **credible interval**: 95% probability the CI contains the true parameter value&lt;sup&gt;2&lt;/sup&gt;.
+
+1. (Can be) less naive models: Allows flat priors on parameters, as well as **weakly informative, regularising priors**, or even **strongly informative priors**.
+]
+
+.footnote[
+[1] Other intervals are available in all major supermarkets.&lt;br/&gt;
+[2] Conditional on the data and model.
+]
+
+---
+
+# Mother-flippin' Priors
+
+How does a prior work? Define your expectations:
+
+.pull-left[
+`\(IQ \sim Normal(\mu_i, \sigma)\)` [likelihood]
+
+`\(\mu_i = \alpha + \beta x_i\)` [linear model]
+
+`\(\alpha \sim Normal(100, 15)\)` [alpha prior]
+
+`\(\beta \sim Normal(0, 10)\)` [beta prior]
+
+`\(\sigma \sim Uniform(0, 20)\)` [*SD* prior]
+]
+
+.pull-right[
+- A data generation process for IQs
+- Linear model to predict outcomes
+- Intercept (control condition here)
+- Slope (difference between control &amp; treatment here)
+- Variation (*SD*) from the mean
+]
+
+Remember, 95% probability of IQs between `\(\pm SD \times\)` 1.96.
+
+This model expects a wide range of differences between the control and treatment conditions, but puts **most probability around 0 (small effects are more likely)**.
+
+---
+
+# Effects of Priors on Results
+
+
+
+
+
+Priors can be split into a few broad categories:
+
+- **Flat Priors**: So-called "uninformative priors"&lt;sup&gt;1&lt;/sup&gt;. All values receive equal probability prior to fitting. Generally, a bad idea and doesn't reflect your beliefs.
+
+- **Informative Priors**: Specific predictions based on prior experience (e.g. knowing effect sizes from the literature).
+
+- **Weakly Informative Priors**: Vague predictions that act to "regularise" the data. Often, extreme effect sizes are downweighted, and smaller effect sizes receive more weighting. Many "default" priors in Bayesian analysis packages use these types of priors.
+
+Both types of informative priors work well with small data sets. Priors can skew predictions (more so the stronger they are), but given enough data all priors are dominated by the likelihood.
+
+.footnote[
+[1] They are informative, though, as they still make a statement of belief.
+]
+
+---
+
+# Effects of Priors on Results: Examples
+
+
+
+
+
+
+&lt;img src="bayes_tasteR_files/figure-html/display-prior-plots-1.png" style="display: block; margin: auto;" /&gt;
+
+
+The wider the prior, the less impact it has on the posterior regardless of its position. More specific priors have a larger impact on the posterior.
+
+---
+
+# Bayesian Inference
+
+Many options, but often involves sampling from the posterior to determine plausible parameter values and intervals of values.
+
+&lt;img src="bayes_tasteR_files/figure-html/pp-check-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Bayesian Inference (Continued)
+
+Compare the Bayesian estimate with the wide prior (*SD* = 100) centred on 0 for the effect of intervention to that of the frequentist estimate.
+
+## Bayesian
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; term &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; estimate &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; error &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; l-95% &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; u-95% &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Intercept &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 97.9 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3.9 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 90.2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 106 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Intervention &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8.5 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 5.4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -2.1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 19 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+## Frequentist
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; term &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; estimate &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; error &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; l-95% &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; u-95% &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; t-value &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; p-value &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Intercept &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 97.9 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 3.8 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 90.2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 106 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 25.6 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.00 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Intervention &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8.6 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 5.4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -2.4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 19 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.6 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.12 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+
+---
+
+# Bayes Factors
+
+The Bayes factor provides evidence for one hypothesis&lt;sup&gt;1&lt;/sup&gt; against another (e.g. null over alternative). 
+
+But, use this with caution. Just because one model is "better" than another, it still might be terrible.
+
+&lt;table&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; hypothesis &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; estimate &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; error &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; l-95% &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; u-95% &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; evid.ratio &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; post.prob &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Intervention = 0 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8.5 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 5.4 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -2.1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 19 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 5.3 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.84 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+We calcaulted the Bayes factor using the **Savage-Dickey density ratio** in the `brms` package. This calculates the ratio of evidence for one model over another at some parameter value of interest (e.g. effect size = 0).
+
+Thus, `\(BF_{01}\)` = 5.27. The data are approximately **5 times more likely under the null than the alternative hypothesis**.
+
+.footnote[
+[1] Conditional on the model and the data.
+]
+
+---
+
+# Ways to Perform Bayesian Analyses (Programmy)
+
+## [Stan](https://mc-stan.org/)
+Statistical computing languge. Very involved, but very efficient and flexible.
+
+## [R](https://www.r-project.org/) (packages)
+1. [`brms`](https://github.com/paul-buerkner/brms) package covers multilevel modelling with arbitrarily complex models. It is an `lme4`-like interface to Stan (a language for Bayesian analysis). Most flexible, but most involved. Has sensible default priors, but requires you to specify priors for Bayes factors.
+
+2. [`BayesFactor`](https://richarddmorey.github.io/BayesFactor/) package covers calculating Bayes factors. Again has sensible default priors. All effects/priors are on a standardised scale. More limited use, but covers most design cases (except, e.g. logistic regression).
+
+---
+
+# Ways to Peform Bayesian Analyses (Clicky)
+
+.pull-left[
+## [JASP](https://jasp-stats.org/)
+Free, open source software that provides a nice, intuitive GUI for doing frequentist and Bayesian statistics. Relies on the BayesFactor R package as its Bayesian engine.
+
+## SPSS (boooooooo!)
+I'm not going to pretend I know anything about this. But, they now have a Bayesian Statistics submenu in Analyze.
+]
+
+.pull-right[
+&lt;img src="C:/Users/Glenn Williams/Dropbox/Github/bayes_learnR/img/jasp.png" width="300px" style="display: block; margin: auto;" /&gt;&lt;img src="C:/Users/Glenn Williams/Dropbox/Github/bayes_learnR/img/fire.gif" width="300px" style="display: block; margin: auto;" /&gt;
+]
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

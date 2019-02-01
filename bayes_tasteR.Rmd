@@ -1,0 +1,443 @@
+---
+title: "Taster on Bayesian Inference"
+author: "Glenn Williams"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include = FALSE}
+options(htmltools.dir.version = FALSE)
+options(digits = 2)
+knitr::opts_chunk$set(fig.width = 6, fig.height = 6, fig.align = "center")
+```
+
+```{r libraries, include = FALSE, messages = FALSE}
+library(tidyverse)
+library(here)
+library(patchwork)
+library(brms)
+library(kableExtra)
+library(knitr)
+library(broom)
+```
+
+# Bayes Rule (Does it?)
+
+General approach is to use **prior information** with your observed data to determine the most plausibile parameter estimates conditional on your model. Probability is interpreted as a **degree of belief**.
+
+```{r prior-posterior-likelihood-data, echo = FALSE}
+# adapted from Jim Grange: Pesky Priors
+bindwidth <- 0.001
+x <- seq(from = bindwidth, to = 1 - bindwidth, by = bindwidth)
+
+prior_params <- c(10, 10)
+prior <- dbeta(x, prior_params[1], prior_params[2])
+data <- c(18, 2) # y, n
+likelihood <- dbeta(x, 1 + data[1], 1 + data[2])
+posterior <- dbeta(x, prior_params[1] + data[1], prior_params[2] + data[2])
+
+plotting_data <- data.frame(
+  x = x,
+  prior = prior, 
+  likelihood = likelihood,
+  posterior = posterior
+)
+```
+
+```{r prior-posterior-likelihood-data-plot, echo = FALSE}
+
+plotting_data_long <- plotting_data %>% 
+  gather(key = density_function, value = density, 2:4)
+
+ggplot(plotting_data_long) +
+  geom_line(
+    aes(x = x, y = density, colour = density_function, linetype = density_function),
+    size = 2
+    ) +
+  scale_linetype_manual(values=c(2, 1, 10)) +
+  scale_color_brewer(type = "qual") +
+  labs(x = "Theta", y = "Density") +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = c(0.1, 0.9),
+    legend.text=element_text(size = 14)
+  )
+```
+
+---
+
+# Frequentist vs. Bayesian Statistics
+
+Some differences between Frequentist (left) and **Bayesian** statistics (right):
+
+.pull-left[
+1. Finds the best model (amongst many others) to fit your data.
+
+1. 95%<sup>1</sup> **confidence interval**: Using this method to calculate CI, 95% of CIs will contain the true parameter value in the long run.
+
+1. Naive models: Assumes flat priors where all values are equally likely. (Including crazy-large effects; i.e. not those in most psychological research.)
+]
+
+.pull-right[
+1. Gives a distribution of models that are (more or less) likely given the data.
+
+1. 95% **credible interval**: 95% probability the CI contains the true parameter value<sup>2</sup>.
+
+1. (Can be) less naive models: Allows flat priors on parameters, as well as **weakly informative, regularising priors**, or even **strongly informative priors**.
+]
+
+.footnote[
+[1] Other intervals are available in all major supermarkets.<br/>
+[2] Conditional on the data and model.
+]
+
+---
+
+# Mother-flippin' Priors
+
+How does a prior work? Define your expectations:
+
+.pull-left[
+$IQ \sim Normal(\mu_i, \sigma)$ [likelihood]
+
+$\mu_i = \alpha + \beta x_i$ [linear model]
+
+$\alpha \sim Normal(100, 15)$ [alpha prior]
+
+$\beta \sim Normal(0, 10)$ [beta prior]
+
+$\sigma \sim Uniform(0, 20)$ [*SD* prior]
+]
+
+.pull-right[
+- A data generation process for IQs
+- Linear model to predict outcomes
+- Intercept (control condition here)
+- Slope (difference between control & treatment here)
+- Variation (*SD*) from the mean
+]
+
+Remember, 95% probability of IQs between $\pm SD \times$ 1.96.
+
+This model expects a wide range of differences between the control and treatment conditions, but puts **most probability around 0 (small effects are more likely)**.
+
+---
+
+# Effects of Priors on Results
+
+```{r define-sampling-functions, include = FALSE, cache = TRUE}
+set.seed(100)
+
+make_data_structure <- function(total_n) {
+  data.frame(
+    subj_id = c(1:total_n),
+    group = c(rep("control", total_n/2), rep("intervention", total_n/2)),
+    group_num = c(rep(0, total_n/2), rep(1, total_n/2))
+  )
+}
+
+sample_data <- function(
+  alpha_m, alpha_sd, beta_m, beta_sd, sigma_sd, total_n, group_nums
+){
+  # sample from priors
+  alpha <- rnorm(1:total_n, alpha_m, alpha_sd)
+  beta <- rnorm(1:total_n, beta_m, beta_sd)
+  mu <- alpha + beta*group_nums
+  
+  # define residual error (must be non-negative)
+  sigma <- runif(1:total_n, 0, sigma_sd)
+  
+  # sample from assumptions and assign to data
+  rnorm(1:total_n, mu, sigma)
+}
+```
+
+```{r sample-data-varying-n, include = FALSE, cache = TRUE}
+ns <- c(20, 40, 80, 100)
+results <- vector(4, mode = "list")
+
+for(i in 1:length(ns)) {
+  n <- ns[i]
+  
+  data <- make_data_structure(n)
+  data$y <- sample_data(100, 15, 10, 10, 10, n, data$group_num)
+  
+  results[[i]] <- data
+}
+
+# map(results, . %>% group_by(group) %>% summarise(m = mean(y)))
+```
+
+Priors can be split into a few broad categories:
+
+- **Flat Priors**: So-called "uninformative priors"<sup>1</sup>. All values receive equal probability prior to fitting. Generally, a bad idea and doesn't reflect your beliefs.
+
+- **Informative Priors**: Specific predictions based on prior experience (e.g. knowing effect sizes from the literature).
+
+- **Weakly Informative Priors**: Vague predictions that act to "regularise" the data. Often, extreme effect sizes are downweighted, and smaller effect sizes receive more weighting. Many "default" priors in Bayesian analysis packages use these types of priors.
+
+Both types of informative priors work well with small data sets. Priors can skew predictions (more so the stronger they are), but given enough data all priors are dominated by the likelihood.
+
+.footnote[
+[1] They are informative, though, as they still make a statement of belief.
+]
+
+---
+
+# Effects of Priors on Results: Examples
+
+```{r fit-brms, include = FALSE, cache = TRUE}
+small_zero <- brm(
+  y ~ group, 
+  data = results[[2]], 
+  cores = parallel::detectCores(),
+  sample_prior = TRUE,
+  prior = c(
+    set_prior("normal(100, 15)", class = "Intercept"),
+    set_prior("normal(0, 10)", class = "b")
+  )
+)
+
+wide_zero <- brm(
+  y ~ group, 
+  data = results[[2]], 
+  cores = parallel::detectCores(),
+  sample_prior = TRUE,
+  prior = c(
+    set_prior("normal(100, 15)", class = "Intercept"),
+    set_prior("normal(0, 100)", class = "b")
+  )
+)
+
+small_direction <- brm(
+  y ~ group, 
+  data = results[[2]], 
+  cores = parallel::detectCores(),
+  sample_prior = TRUE,
+  prior = c(
+    set_prior("normal(100, 15)", class = "Intercept"),
+    set_prior("normal(10, 10)", class = "b")
+  )
+)
+
+wide_direction <- brm(
+  y ~ group, 
+  data = results[[2]], 
+  cores = parallel::detectCores(),
+  sample_prior = TRUE,
+  prior = c(
+    set_prior("normal(100, 15)", class = "Intercept"),
+    set_prior("normal(10, 100)", class = "b")
+  )
+)
+
+linear_model <- lm(y ~ group, data = results[[2]])
+```
+
+
+```{r make-prior-plots, include = FALSE, cache = TRUE}
+prediction <- "groupintervention = 0"
+
+small_zero_h <- hypothesis(small_zero, prediction)
+wide_zero_h <- hypothesis(wide_zero, prediction)
+small_direction <- hypothesis(small_direction, prediction)
+wide_direction <- hypothesis(wide_direction, prediction)
+
+add_lines <- function(ggplot_object) {
+    ggplot_object + 
+    geom_vline(
+      xintercept = c(
+        0,
+        small_zero_h$hypothesis$Estimate,
+        wide_zero_h$hypothesis$Estimate,
+        small_direction$hypothesis$Estimate,
+        wide_direction$hypothesis$Estimate
+      ), 
+      col = c("#525252", "#a6611a", "#dfc27d", "#80cdc1", "#018571"),
+      lwd = 1
+      ) + 
+    theme_minimal() +
+    theme(
+      strip.background = element_blank(),
+      strip.text.x = element_blank()
+    )
+}
+
+add_priors <- function(ggplot_object) {
+    ggplot_object + 
+    annotate(
+      "text", 
+      x = rep(-20, 5), 
+      y = seq(0.075, by = -0.005, length.out = 5), 
+      label = c(
+        "Beta prior", 
+        "N(0, 10)",
+        "N(0, 100)", 
+        "N(10, 10)", 
+        "N(10, 100)"
+      ),
+      size = 3,
+      col = c("black", "#a6611a", "#dfc27d", "#80cdc1", "#018571")
+    )
+}
+
+small_zero_plot <- plot(small_zero_h)[[1]] %>%
+  add_priors() %>%
+  add_lines() +
+  guides(fill = FALSE) +
+  labs(y = "Density") +
+  ggtitle("Effects of different Priors on the Posterior")
+
+wide_zero_plot <- plot(wide_zero_h)[[1]] %>%
+  add_lines() +
+  theme(legend.position = c(.85, .9))
+  
+small_direction_plot <- plot(small_direction)[[1]] %>%
+  add_lines() + 
+  guides(fill = FALSE) +
+  labs(x = "Parameter Estimate", y = "Density")
+
+wide_direction_plot <- plot(wide_direction)[[1]] %>%
+  add_lines() + 
+  guides(fill = FALSE) +
+  labs(x = "Parameter Estimate")
+```
+
+```{r display-prior-plots, echo = FALSE, warning = FALSE}
+small_zero_plot + 
+  wide_zero_plot +
+  small_direction_plot + 
+  wide_direction_plot +
+  plot_layout(ncol = 2) 
+```
+
+
+The wider the prior, the less impact it has on the posterior regardless of its position. More specific priors have a larger impact on the posterior.
+
+---
+
+# Bayesian Inference
+
+Many options, but often involves sampling from the posterior to determine plausible parameter values and intervals of values.
+
+```{r pp-check, echo = FALSE, cache = TRUE}
+pp_check(wide_zero, nsamples = 1000) + theme_minimal()
+```
+
+---
+
+# Bayesian Inference (Continued)
+
+Compare the Bayesian estimate with the wide prior (*SD* = 100) centred on 0 for the effect of intervention to that of the frequentist estimate.
+
+## Bayesian
+
+```{r bayes-fixed, echo = FALSE}
+bayes_col_names <- c(
+  "term", "estimate", "error", "l-95%", "u-95%"
+)
+
+tidy_bayes <- fixef(wide_zero) %>% 
+  as.tibble() %>%
+  rownames_to_column("term")
+
+tidy_bayes[, 1] <- c("Intercept", "Intervention")
+tidy_bayes %>% kable(col.names = bayes_col_names)
+```
+
+## Frequentist
+
+```{r nhst-fixed, echo = FALSE}
+nhst_col_names <- c(
+  "term", "estimate", "error", "l-95%", "u-95%", "t-value", "p-value"
+)
+
+tidy_lm <- cbind(
+  broom::tidy(linear_model),
+  confint(linear_model)
+) %>%
+  select(term, estimate, std.error, `2.5 %`, `97.5 %`, statistic, p.value)
+
+row.names(tidy_lm) <- NULL
+tidy_lm[, 1] <- c("Intercept", "Intervention")
+
+tidy_lm %>% kable(col.names = nhst_col_names)
+```
+
+```{r refit-diff-data-brms, include = FALSE, eval = FALSE}
+for(i in seq_along(results)) {
+ contrasts(results[[i]]$group) <- contr.sum # sum coded
+  informative_prior <- brm(
+    y ~ group, 
+    data = results[[1]], 
+    cores = parallel::detectCores(),
+    sample_prior = TRUE,
+    prior = c(
+      set_prior("normal(100, 15)", class = "Intercept"),
+      set_prior("normal(0, 10)", class = "b")
+    )
+  ) 
+}
+```
+
+---
+
+# Bayes Factors
+
+The Bayes factor provides evidence for one hypothesis<sup>1</sup> against another (e.g. null over alternative). 
+
+But, use this with caution. Just because one model is "better" than another, it still might be terrible.
+
+```{r hypothesis-output, echo = FALSE}
+wide_zero_h$hypothesis[1,1] <- "Intervention = 0"
+
+kable(
+  wide_zero_h$hypothesis %>% select(-Star),
+  col.names = c("hypothesis", "estimate", "error", "l-95%", "u-95%", "evid.ratio", "post.prob"))
+```
+
+We calcaulted the Bayes factor using the **Savage-Dickey density ratio** in the `brms` package. This calculates the ratio of evidence for one model over another at some parameter value of interest (e.g. effect size = 0).
+
+Thus, $BF_{01}$ = `r round(wide_zero_h$hypothesis$Evid.Ratio, 2)`. The data are approximately **`r round(wide_zero_h$hypothesis$Evid.Ratio)` times more likely under the null than the alternative hypothesis**.
+
+.footnote[
+[1] Conditional on the model and the data.
+]
+
+---
+
+# Ways to Perform Bayesian Analyses (Programmy)
+
+## [Stan](https://mc-stan.org/)
+Statistical computing languge. Very involved, but very efficient and flexible.
+
+## [R](https://www.r-project.org/) (packages)
+1. [`brms`](https://github.com/paul-buerkner/brms) package covers multilevel modelling with arbitrarily complex models. It is an `lme4`-like interface to Stan (a language for Bayesian analysis). Most flexible, but most involved. Has sensible default priors, but requires you to specify priors for Bayes factors.
+
+2. [`BayesFactor`](https://richarddmorey.github.io/BayesFactor/) package covers calculating Bayes factors. Again has sensible default priors. All effects/priors are on a standardised scale. More limited use, but covers most design cases (except, e.g. logistic regression).
+
+---
+
+# Ways to Peform Bayesian Analyses (Clicky)
+
+.pull-left[
+## [JASP](https://jasp-stats.org/)
+Free, open source software that provides a nice, intuitive GUI for doing frequentist and Bayesian statistics. Relies on the BayesFactor R package as its Bayesian engine.
+
+## SPSS (boooooooo!)
+I'm not going to pretend I know anything about this. But, they now have a Bayesian Statistics submenu in Analyze.
+]
+
+.pull-right[
+```{r clicky-img, echo = FALSE, out.width = "300px"}
+knitr::include_graphics(here("img", "jasp.png"))
+knitr::include_graphics(here("img", "fire.gif"))
+```
+]
